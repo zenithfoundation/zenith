@@ -1,0 +1,1 @@
+document.getElementById('elem-1837376e-5a33-4855-a076-7108134cc2e3').addEventListener('click', context.hello.bind(context));
