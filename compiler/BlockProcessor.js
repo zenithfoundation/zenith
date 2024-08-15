@@ -1,9 +1,11 @@
 import ExpressionEvaluator from './ExpressionEvaluator.js';
 
-import fs from 'fs';
-import path from 'path';
-
 export default {
+    /**
+     * Process the content blocks by splitting, evaluating, and rendering dynamic content.
+     * @param {string} content The content to process
+     * @return {string} The processed content with all blocks evaluated and rendered
+     */
     processBlocks(content) {
         let finalContent = '';
         let isInEachBlock = false;
@@ -12,14 +14,15 @@ export default {
         let insideEachBlockContent = '';
         let shouldProcessBlock = true;
         let conditionMet = false;
-        const extractedFunctions = [];
 
-        const blocks = content.split(/({{.*?}}|{[^}]+}|<[^>]+>)/g).filter(Boolean);
+        // Split content into blocks based on delimiters
+        const blocks = content.split(/(\{[^}]*\})/g).filter(Boolean);
 
+        // Iterate over each block
         blocks.forEach(block => {
-            if (block.startsWith('<')) {
-                handleHtmlBlock(block);
-            } else if (block.startsWith('{each')) {
+            block = block.trim();
+
+            if (block.startsWith('{each')) {
                 handleEachStart(block);
             } else if (block.startsWith('{/each')) {
                 handleEachEnd();
@@ -36,35 +39,12 @@ export default {
             }
         });
 
-        generateExternalJs(extractedFunctions);
         return finalContent;
 
-        function handleHtmlBlock(block) {
-            const eventHandlerPattern = /(on:\w+)=["']([^"']+)["']/g;
-            let modifiedBlock = block;
-
-            modifiedBlock = modifiedBlock.replace(eventHandlerPattern, (match, event, handler) => {
-                if (handler.includes('function')) {
-                    const functionName = extractFunction(handler);
-                    extractedFunctions.push({ name: functionName, body: handler });
-                    return `${event}="${functionName}"`;
-                } else {
-                    return match;
-                }
-            });
-
-            if (isInEachBlock) {
-                insideEachBlockContent += modifiedBlock;
-            } else {
-                finalContent += modifiedBlock;
-            }
-        }
-
-        function extractFunction(handler) {
-            const functionName = `handler_${Math.random().toString(36).substring(2, 15)}`;
-            return functionName;
-        }
-
+        /**
+         * Handle the start of an {each} block.
+         * @param {string} block The {each} block content
+         */
         function handleEachStart(block) {
             const parts = block.split('as');
             if (parts.length === 2) {
@@ -75,6 +55,9 @@ export default {
             }
         }
 
+        /**
+         * Handle the end of an {each} block.
+         */
         function handleEachEnd() {
             isInEachBlock = false;
             if (Array.isArray(eachArray)) {
@@ -88,6 +71,10 @@ export default {
             insideEachBlockContent = '';
         }
 
+        /**
+         * Handle the {if} block by evaluating the condition.
+         * @param {string} block The {if} block content
+         */
         function handleIfCondition(block) {
             if (!conditionMet) {
                 const condition = block.replace('{if', '').replace('}', '').trim();
@@ -97,6 +84,10 @@ export default {
             }
         }
 
+        /**
+         * Handle the {else if} block by evaluating the condition.
+         * @param {string} block The {else if} block content
+         */
         function handleElseIfCondition(block) {
             if (!conditionMet) {
                 const condition = block.replace('{else if', '').replace('}', '').trim();
@@ -106,26 +97,38 @@ export default {
             }
         }
 
+        /**
+         * Handle the {else} block by toggling the process flag based on previous conditions.
+         */
         function handleElseCondition() {
             shouldProcessBlock = !conditionMet;
-            conditionMet = true;
+            conditionMet = true; // Mark that a condition has been met
         }
 
+        /**
+         * Reset the processing flags at the end of an {if} block.
+         */
         function handleIfEnd() {
             shouldProcessBlock = true;
-            conditionMet = false;
+            conditionMet = false; // Reset conditionMet for next {if} block
         }
 
+        /**
+         * Handle content blocks outside of control structures.
+         * @param {string} block The content block to handle
+         */
         function handleContentBlock(block) {
             if (isInEachBlock) {
                 insideEachBlockContent += block;
             } else if (shouldProcessBlock) {
                 finalContent += evaluateContent(block);
-            } else {
-                finalContent += block;
             }
         }
 
+        /**
+         * Evaluate a condition using the ExpressionEvaluator.
+         * @param {string} condition The condition to evaluate
+         */
         function evaluateCondition(condition) {
             try {
                 shouldProcessBlock = ExpressionEvaluator.evaluate(condition);
@@ -136,18 +139,16 @@ export default {
             }
         }
 
+        /**
+         * Evaluate and replace expressions within a content block.
+         * @param {string} block The content block to evaluate
+         * @return {string} The evaluated content block
+         */
         function evaluateContent(block) {
             return block.replace(/{([^}]+)}/g, (match, p1) => {
                 const evaluated = ExpressionEvaluator.evaluate(p1.trim());
                 return typeof evaluated === 'string' ? evaluated.replace(/^"|"$/g, '') : evaluated;
             });
-        }
-
-        function generateExternalJs(functions) {
-            const jsContent = functions.map(fn => `function ${fn.name} ${fn.body}`).join('\n\n');
-            const outputPath = 'output.js';
-            fs.writeFileSync(outputPath, jsContent, 'utf8');
-            console.log(`Generated ${functions.length} functions in output.js`);
         }
     }
 };

@@ -2,11 +2,11 @@ import Compiler from "../compiler/Compiler.js";
 
 const content = `
 <script>
-    function hello() {
-       console.log("Hello!");
-    }
+function hello()
+{
+    console.log("SUCA");
+}
 </script>
-
 <button on:click={hello}>Click me!</button>
 `;
 

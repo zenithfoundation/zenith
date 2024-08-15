@@ -8,9 +8,5 @@
   "keywords": [],
   "author": "Zenith Foundation",
   "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "jsdom": "^24.1.1",
-    "uuid": "^10.0.0"
-  }
+  "description": ""
 }
